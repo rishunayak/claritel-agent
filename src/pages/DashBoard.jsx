@@ -1,8 +1,17 @@
-import { UserButton, useUser } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/clerk-react";
+import AdminDashboard from "./AdminDashboard";
+import { useUserRole } from "../hooks/useUserRole";
 
 const DashBoard = () => {
-  const { user } = useUser();
+  const { user, isAdmin } = useUserRole();
+  console.log(isAdmin);
+  console.log(user);
+  // If user is admin, show admin dashboard
+  if (isAdmin) {
+    return <AdminDashboard />;
+  }
 
+  // Regular user dashboard
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
