@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useAuth } from "@clerk/clerk-react";
@@ -7,6 +7,12 @@ import {
   selectAssistantsLoading,
   selectAssistantsError,
 } from "../redux/assistants/assistantsSelectors";
+import { fetchCompanies } from "../redux/companies/companiesActions";
+import {
+  selectAllCompanies,
+  selectCompaniesLoading,
+  selectCompaniesError,
+} from "../redux/companies/companiesSelectors";
 import { Check, ChevronDown, ChevronUp, ArrowRight, ArrowLeft } from "lucide-react";
 
 const CreateAssistant = () => {
@@ -16,46 +22,68 @@ const CreateAssistant = () => {
 
   const isLoading = useSelector(selectAssistantsLoading);
   const apiError = useSelector(selectAssistantsError);
+  
+  // Companies state
+  const companies = useSelector(selectAllCompanies);
+  const companiesLoading = useSelector(selectCompaniesLoading);
+  const companiesError = useSelector(selectCompaniesError);
 
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [assistant, setAssistant] = useState(null);
 
+  // Fetch companies on component mount
+  useEffect(() => {
+    const fetchCompaniesData = async () => {
+      try {
+        const token = await getToken();
+        if (token) {
+          dispatch(fetchCompanies(token));
+        }
+      } catch (error) {
+        console.error("Error getting token for companies fetch:", error);
+      }
+    };
+
+    fetchCompaniesData();
+  }, [dispatch, getToken]);
+
   const [formData, setFormData] = useState({
     assistant_name: "",
     description: "",
     agent_description: "",
     website_url: "",
-    specialization: "general",
+    specialization: "support",
     call_preference: "inbound",
-    languages: ["English"],
+    language: "en",
     is_active: true,
+    company_id: "",
     // Additional fields for step 2 and 3
     databases: [],
     services: [],
     phone_number: "",
   });
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-  };
+  }, []);
 
-  const handleLanguageToggle = (lang) => {
+  const handleLanguageToggle = useCallback((lang) => {
     setFormData((prev) => {
       const languages = prev.languages.includes(lang)
         ? prev.languages.filter((l) => l !== lang)
         : [...prev.languages, lang];
       return { ...prev, languages };
     });
-  };
+  }, []);
 
   // Step navigation functions
-  const goToNextStep = async () => {
+  const goToNextStep = useCallback(async () => {
     if (currentStep === 2) {
       // Create assistant after step 2 (data integration)
     try {
@@ -66,16 +94,17 @@ const CreateAssistant = () => {
 
       const assistantData = {
         assistant_name: formData.assistant_name,
-        is_active: formData.is_active,
-        specialization: formData.specialization,
         call_preference: formData.call_preference,
-        language: formData.languages.join(","),
+        specialization: formData.specialization,
         description: formData.description,
+        is_active: formData.is_active,
         website_url: formData.website_url || "",
+        language: formData.language,
         agent_description: formData.agent_description || "",
-          databases: formData.databases || {},
-          dataSource: formData.dataSource || "",
-          uploadedFile: formData.uploadedFile || null,
+        company_id: formData.company_id,
+        databases: formData.databases || {},
+        dataSource: formData.dataSource || "",
+        uploadedFile: formData.uploadedFile || null,
         token,
       };
 
@@ -93,17 +122,17 @@ const CreateAssistant = () => {
       setCompletedSteps([...completedSteps, currentStep]);
       setCurrentStep(currentStep + 1);
     }
-  };
+  }, [currentStep, completedSteps, formData, getToken, dispatch]);
 
-  const goToPreviousStep = () => {
+  const goToPreviousStep = useCallback(() => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
-  };
+  }, [currentStep]);
 
-  const finalizeAssistant = () => {
+  const finalizeAssistant = useCallback(() => {
     navigate("/assistants");
-  };
+  }, [navigate]);
 
   const availableLanguages = [
     "English",
@@ -200,7 +229,9 @@ const CreateAssistant = () => {
           formData={formData}
           setFormData={setFormData}
           goToNextStep={goToNextStep}
-          availableLanguages={availableLanguages}
+          companies={companies}
+          companiesLoading={companiesLoading}
+          companiesError={companiesError}
         />
 
         {/* Step 2: Data Integration */}
@@ -259,119 +290,196 @@ const CreateAssistant = () => {
 };
 
 // Step 1: Basic Information Component
-const Step1BasicInfo = ({ currentStep, formData, setFormData, goToNextStep, availableLanguages }) => {
-  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
+const Step1BasicInfo = memo(({ currentStep, formData, setFormData, goToNextStep, companies, companiesLoading, companiesError }) => {
+  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
 
   if (currentStep !== 1) return null;
 
-  const handleChange = (e) => {
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.company-dropdown')) {
+        setCompanyDropdownOpen(false);
+      }
+    };
+
+    if (companyDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [companyDropdownOpen]);
+
+  const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-  };
+  }, [setFormData]);
 
-  const handleLanguageToggle = (lang) => {
-    setFormData((prev) => {
-      const languages = prev.languages.includes(lang)
-        ? prev.languages.filter((l) => l !== lang)
-        : [...prev.languages, lang];
-      return { ...prev, languages };
-    });
-  };
+  const handleCompanySelect = useCallback((companyId, companyName) => {
+    setFormData((prev) => ({
+      ...prev,
+      company_id: companyId,
+      company_name: companyName,
+    }));
+    setCompanyDropdownOpen(false);
+  }, [setFormData]);
+
+  const handleSubmit = useCallback((e) => {
+    e.preventDefault();
+    if (!formData.company_id) {
+      alert("Please select a company to continue");
+      return;
+    }
+    goToNextStep();
+  }, [formData.company_id, goToNextStep]);
 
   return (
     <div className="mb-8">
-      <form onSubmit={(e) => { e.preventDefault(); goToNextStep(); }} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Assistant Name - Full Width */}
-            <div>
+        <div>
           <label htmlFor="assistant_name" className="block text-sm font-medium text-gray-700 mb-2">
-                Assistant Name *
-              </label>
-              <input
-                type="text"
-                id="assistant_name"
-                name="assistant_name"
-                value={formData.assistant_name}
-                onChange={handleChange}
-                required
+            Assistant Name *
+          </label>
+          <input
+            type="text"
+            id="assistant_name"
+            name="assistant_name"
+            value={formData.assistant_name}
+            onChange={handleChange}
+            required
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500"
-                placeholder="e.g., Customer Support Bot"
-              />
-            </div>
+            placeholder="e.g., Customer Support Bot"
+          />
+        </div>
+
+        {/* Company Selection - Full Width */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Company *
+          </label>
+          <div className="relative company-dropdown">
+            <button
+              type="button"
+              onClick={() => setCompanyDropdownOpen(!companyDropdownOpen)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500 text-left flex items-center justify-between"
+              disabled={companiesLoading}
+            >
+              <span className="text-gray-700">
+                {formData.company_name || "Select a company"}
+              </span>
+              <svg className={`w-5 h-5 text-gray-400 transition-transform ${companyDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {companyDropdownOpen && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {companiesLoading ? (
+                  <div className="px-4 py-3 text-center text-gray-500">
+                    Loading companies...
+                  </div>
+                ) : companiesError ? (
+                  <div className="px-4 py-3 text-center text-red-500">
+                    Error loading companies: {companiesError}
+                  </div>
+                ) : companies.length === 0 ? (
+                  <div className="px-4 py-3 text-center text-gray-500">
+                    No companies available
+                  </div>
+                ) : (
+                  companies.map((company) => (
+                    <button
+                      key={company.id}
+                      type="button"
+                      onClick={() => handleCompanySelect(company.id, company.name)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                    >
+                      <span className="text-sm text-gray-700">{company.name}</span>
+                      {company.description && (
+                        <p className="text-xs text-gray-500 mt-1">{company.description}</p>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Description - Full Width */}
-            <div>
+        <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                Description *
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                required
+            Description *
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            required
             rows={4}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500"
-                placeholder="Brief description of the assistant's purpose"
-              />
-            </div>
+            placeholder="Company description here"
+          />
+        </div>
 
-        {/* Website URL and Languages - Side by Side */}
+        {/* Agent Description - Full Width */}
+        <div>
+          <label htmlFor="agent_description" className="block text-sm font-medium text-gray-700 mb-2">
+            Agent Description
+          </label>
+          <textarea
+            id="agent_description"
+            name="agent_description"
+            value={formData.agent_description}
+            onChange={handleChange}
+            rows={3}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500"
+            placeholder="Agent offers support"
+          />
+        </div>
+
+        {/* Website URL and Language - Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
+          <div>
             <label htmlFor="website_url" className="block text-sm font-medium text-gray-700 mb-2">
-                Website URL
-              </label>
-              <input
-                type="url"
-                id="website_url"
-                name="website_url"
-                value={formData.website_url}
-                onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500"
-                placeholder="https://example.com"
-              />
-            </div>
-
-            <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Supported Languages *
+              Website URL
             </label>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500 text-left flex items-center justify-between"
-              >
-                <span className="text-gray-700">
-                  {formData.languages.length > 0 
-                    ? formData.languages.join(", ") 
-                    : "Select languages"
-                  }
-                </span>
-                <svg className={`w-5 h-5 text-gray-400 transition-transform ${languageDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {languageDropdownOpen && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {availableLanguages.map((lang) => (
-                    <label key={lang} className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.languages.includes(lang)}
-                        onChange={() => handleLanguageToggle(lang)}
-                        className="h-4 w-4 text-purple-600 focus:ring-gray-500 border-gray-300 rounded"
-                      />
-                      <span className="ml-3 text-sm text-gray-700">{lang}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+            <input
+              type="url"
+              id="website_url"
+              name="website_url"
+              value={formData.website_url}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500"
+              placeholder="https://example.com"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-2">
+              Language
+            </label>
+            <select
+              id="language"
+              name="language"
+              value={formData.language}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500"
+            >
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="zh">Chinese</option>
+              <option value="ja">Japanese</option>
+            </select>
           </div>
         </div>
 
@@ -388,6 +496,7 @@ const Step1BasicInfo = ({ currentStep, formData, setFormData, goToNextStep, avai
                 onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500"
               >
+                <option value="support">Support</option>
                 <option value="general">General</option>
                 <option value="customer_support">Customer Support</option>
                 <option value="sales">Sales</option>
@@ -427,7 +536,9 @@ const Step1BasicInfo = ({ currentStep, formData, setFormData, goToNextStep, avai
       </form>
     </div>
   );
-};
+});
+
+Step1BasicInfo.displayName = 'Step1BasicInfo';
 
 // Step 2: Data Integration Component
 const Step2DataIntegration = ({ currentStep, formData, setFormData, goToNextStep, goToPreviousStep }) => {
