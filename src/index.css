@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+@layer base {
+  button,
+  a[href] {
+    cursor: pointer;
+  }
+}

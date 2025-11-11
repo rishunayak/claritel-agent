@@ -13,6 +13,8 @@ import AssistantsPage from "./pages/AssistantsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import CreateAssistant from "./pages/CreateAssistant";
 import CompaniesPage from "./pages/CompaniesPage";
+import CreateCampaign from "./pages/CreateCampaign";
+import CompanyAssistantsPage from "./pages/CompanyAssistantsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -80,11 +82,42 @@ function App() {
         />
 
         <Route
+          path="/create-campaign"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CreateCampaign />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/companies"
           element={
             <ProtectedRoute>
               <Layout>
                 <CompaniesPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/companies/:companyId/assistants"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CompanyAssistantsPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/companies/:companyId/create-assistant"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CreateAssistant />
               </Layout>
             </ProtectedRoute>
           }

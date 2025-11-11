@@ -41,13 +41,19 @@ const objectToFormData = (data) => {
 // Fetch all assistants
 export const fetchAssistants = createAsyncThunk(
   "assistants/fetch",
-  async (token, { rejectWithValue }) => {
+  async ({ token, companyId } = {}, { rejectWithValue }) => {
     try {
       const baseUrl = getBaseUrl();
 
-      const response = await axios.get(`${baseUrl}/api/assistants`, {
+      let url = `${baseUrl}/api/assistants`;
+      if (companyId) {
+        const query = new URLSearchParams({ company_id: companyId }).toString();
+        url = `${url}?${query}`;
+      }
+
+      const response = await axios.get(url, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token || "org_test_token"}`,
         },
       });
 
@@ -59,7 +65,7 @@ export const fetchAssistants = createAsyncThunk(
         "An unknown error occurred";
       return rejectWithValue(message);
     }
-  }
+  },
 );
 
 // Create a new assistant
@@ -73,16 +79,12 @@ export const createAssistant = createAsyncThunk(
       // Create FormData for the request
       const formData = objectToFormData(assistantFields);
 
-      const response = await axios.post(
-        `${baseUrl}/api/assistants`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const response = await axios.post(`${baseUrl}/api/assistants`, formData, {
+        headers: {
+          Authorization: `Bearer org_test_token`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       try {
         await axios.post(
@@ -90,10 +92,10 @@ export const createAssistant = createAsyncThunk(
           databases,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer org_test_token`,
               "Content-Type": "application/json",
             },
-          }
+          },
         );
       } catch (error) {
         console.error("Error creating database schema:", error);
@@ -107,7 +109,7 @@ export const createAssistant = createAsyncThunk(
         "An unknown error occurred";
       return rejectWithValue(message);
     }
-  }
+  },
 );
 
 // Update an assistant
@@ -131,10 +133,10 @@ export const updateAssistant = createAsyncThunk(
         formDataToSend,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer org_test_token`,
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       return response.data;
@@ -145,7 +147,7 @@ export const updateAssistant = createAsyncThunk(
         "An unknown error occurred";
       return rejectWithValue(message);
     }
-  }
+  },
 );
 
 // Delete an assistant
@@ -157,7 +159,7 @@ export const deleteAssistant = createAsyncThunk(
 
       await axios.delete(`${baseUrl}/api/assistants/${id}`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer org_test_token`,
         },
       });
 
@@ -170,6 +172,5 @@ export const deleteAssistant = createAsyncThunk(
         "An unknown error occurred";
       return rejectWithValue(message);
     }
-  }
+  },
 );
-

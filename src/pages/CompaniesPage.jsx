@@ -1,34 +1,34 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useUser, useAuth } from "@clerk/clerk-react";
-import { 
-  Building2, 
-  Plus, 
-  Search, 
-  Filter, 
+import { useNavigate } from "react-router-dom";
+import {
+  Building2,
+  Plus,
+  Search,
   MoreHorizontal,
   Edit,
   Trash2,
   Globe,
-  Calendar,
-  ChevronDown,
-  RefreshCw
+  RefreshCw,
+  Bot,
+  Eye,
 } from "lucide-react";
 import {
   fetchCompanies,
   createCompany,
   updateCompany,
-  deleteCompany
+  deleteCompany,
 } from "../redux/companies/companiesActions";
 import { resetCompaniesState } from "../redux/companies/companiesSlice";
 import {
   selectAllCompanies,
   selectCompaniesLoading,
-  selectCompaniesError
+  selectCompaniesError,
 } from "../redux/companies/companiesSelectors";
-
 const CompaniesPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user } = useUser();
   const { getToken } = useAuth();
   const companies = useSelector(selectAllCompanies);
@@ -43,7 +43,8 @@ const CompaniesPage = () => {
   const [editingCompany, setEditingCompany] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
-    url: ""
+    url: "",
+    description: "",
   });
 
   // Debug logging
@@ -57,7 +58,10 @@ const CompaniesPage = () => {
       if (user) {
         try {
           const token = await getToken();
-          console.log("Fetching companies with token:", token ? "Token received" : "No token");
+          console.log(
+            "Fetching companies with token:",
+            token ? "Token received" : "No token",
+          );
           dispatch(fetchCompanies(token));
         } catch (error) {
           console.error("Error getting token:", error);
@@ -66,7 +70,7 @@ const CompaniesPage = () => {
         console.log("No user found");
       }
     };
-    
+
     fetchCompaniesData();
   }, [dispatch, user, getToken]);
 
@@ -77,9 +81,13 @@ const CompaniesPage = () => {
     };
   }, [dispatch]);
 
-  const filteredCompanies = companies.filter(company => {
-    const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         company.url.toLowerCase().includes(searchTerm.toLowerCase());
+  const normalizedSearch = searchTerm.toLowerCase();
+
+  const filteredCompanies = companies.filter((company) => {
+    const matchesSearch =
+      (company.name || "").toLowerCase().includes(normalizedSearch) ||
+      (company.url || "").toLowerCase().includes(normalizedSearch) ||
+      (company.description || "").toLowerCase().includes(normalizedSearch);
     return matchesSearch;
   });
 
@@ -90,23 +98,28 @@ const CompaniesPage = () => {
   const handleCreateCompany = async (e) => {
     e.preventDefault();
     console.log("Create company form submitted:", formData);
-    
-    if (!formData.name || !formData.url) {
+
+    if (!formData.name || !formData.description) {
       console.log("Form validation failed - missing fields");
       return;
     }
 
     try {
       const token = await getToken();
-      console.log("Creating company with token:", token ? "Token received" : "No token");
-      
-      const result = await dispatch(createCompany({
-        ...formData,
-        token
-      })).unwrap();
-      
+      console.log(
+        "Creating company with token:",
+        token ? "Token received" : "No token",
+      );
+
+      const result = await dispatch(
+        createCompany({
+          ...formData,
+          token,
+        }),
+      ).unwrap();
+
       console.log("Company created successfully:", result);
-      setFormData({ name: "", url: "" });
+      setFormData({ name: "", url: "", description: "" });
       setShowCreateModal(false);
     } catch (error) {
       console.error("Error creating company:", error);
@@ -115,17 +128,19 @@ const CompaniesPage = () => {
 
   const handleEditCompany = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.url) return;
+    if (!formData.name || !formData.description) return;
 
     try {
       const token = await getToken();
-      await dispatch(updateCompany({
-        id: editingCompany.id,
-        ...formData,
-        token
-      })).unwrap();
-      
-      setFormData({ name: "", url: "" });
+      await dispatch(
+        updateCompany({
+          id: editingCompany.id,
+          ...formData,
+          token,
+        }),
+      ).unwrap();
+
+      setFormData({ name: "", url: "", description: "" });
       setEditingCompany(null);
       setShowEditModal(false);
     } catch (error) {
@@ -134,7 +149,8 @@ const CompaniesPage = () => {
   };
 
   const handleDeleteCompany = async (companyId) => {
-    if (!window.confirm("Are you sure you want to delete this company?")) return;
+    if (!window.confirm("Are you sure you want to delete this company?"))
+      return;
 
     try {
       const token = await getToken();
@@ -149,41 +165,44 @@ const CompaniesPage = () => {
     setEditingCompany(company);
     setFormData({
       name: company.name,
-      url: company.url
+      url: company.url || "",
+      description: company.description || "",
     });
     setShowEditModal(true);
     setOpenDropdown(null);
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (openDropdown && !event.target.closest('.dropdown-container')) {
+      if (openDropdown && !event.target.closest(".dropdown-container")) {
         setOpenDropdown(null);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [openDropdown]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 rounded-3xl bg-gradient-to-b from-[#E6E6FF] via-white to-white p-4 shadow-sm md:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#D7D7FF] bg-gradient-to-r from-[#E6E6FF] via-white to-[#E6E6FF] p-6 shadow-sm">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Companies</h1>
-          <p className="text-gray-600 mt-1">Manage your company information and settings.</p>
+          <p className="mt-1 text-gray-600">
+            Manage your company information and settings.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -198,7 +217,7 @@ const CompaniesPage = () => {
                 }
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="flex items-center gap-2 rounded-xl border border-[#C6C6FF] bg-[#E6E6FF] px-4 py-2 font-medium text-indigo-700 transition-all hover:-translate-y-0.5 hover:bg-[#d9d9ff] hover:shadow-md"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Refresh</span>
@@ -208,7 +227,7 @@ const CompaniesPage = () => {
               console.log("Add Company button clicked");
               setShowCreateModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+            className="flex items-center gap-2 rounded-xl border border-transparent bg-[#E6E6FF] px-4 py-2 font-semibold text-indigo-700 shadow-md transition-all hover:-translate-y-0.5 hover:border-[#C6C6FF] hover:bg-[#d9d9ff] hover:shadow-lg"
           >
             <Plus className="h-5 w-5" />
             <span>Add Company</span>
@@ -217,18 +236,18 @@ const CompaniesPage = () => {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-gray-50 rounded-xl p-6">
-        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+      <div className="rounded-2xl p-6 backdrop-blur-sm">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row">
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 transform text-gray-400" />
               <input
                 type="text"
                 placeholder="Search companies..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500"
+                className="w-full rounded-xl border border-[#DADAFE] py-2 pr-4 pl-10 text-sm text-gray-700 shadow-sm transition focus:border-[#6366f1] focus:ring-2 focus:ring-[#E6E6FF]"
               />
             </div>
           </div>
@@ -238,7 +257,7 @@ const CompaniesPage = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-0 focus:border-gray-500"
+              className="w-full rounded-xl border border-[#DADAFE] px-4 py-2 text-sm text-gray-700 shadow-sm transition hover:border-[#C6C6FF] focus:border-[#6366f1] focus:ring-2 focus:ring-[#E6E6FF]"
             >
               <option value="name">Sort by Name</option>
               <option value="created">Sort by Created Date</option>
@@ -248,67 +267,130 @@ const CompaniesPage = () => {
         </div>
 
         {/* Companies Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
           {filteredCompanies.map((company) => (
-            <div key={company.id} className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div
+              key={company.id}
+              className="flex flex-col overflow-hidden rounded-3xl border border-[#e4e4ff] bg-white shadow-[0_18px_40px_-24px_rgba(79,70,229,0.4)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_24px_48px_-20px_rgba(79,70,229,0.45)]"
+            >
               {/* Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <Building2 className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{company.name}</h3>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <Globe className="h-4 w-4" />
-                      <span className="truncate max-w-32">{company.url}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="relative dropdown-container">
-                  <button 
+              <div className="flex items-center justify-between bg-[#E6E6FF] px-6 py-5">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {company.name}
+                </h3>
+                <div className="dropdown-container relative">
+                  <button
                     onClick={() => handleDropdownToggle(company.id)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="rounded-full p-2 text-gray-700 transition-colors hover:bg-white/60"
                   >
-                    <MoreHorizontal className="h-4 w-4 text-gray-600" />
+                    <MoreHorizontal className="h-5 w-5" />
                   </button>
-                  
+
                   {/* Dropdown Menu */}
                   {openDropdown === company.id && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-20">
-                      {/* Arrow */}
-                      <div className="absolute -top-1 right-4 w-2 h-2 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
-                      
-                      <div className="py-2">
-                        <button
-                          onClick={() => openEditModal(company)}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors first:rounded-t-lg"
-                        >
-                          <Edit className="h-4 w-4" />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCompany(company.id)}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 transition-colors last:rounded-b-lg"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span>Delete</span>
-                        </button>
-                      </div>
+                    <div className="absolute top-full right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-[#ececff] bg-white shadow-2xl">
+                      <button
+                        onClick={() => {
+                          setOpenDropdown(null);
+                          navigate(`/companies/${company.id}/assistants`, {
+                            state: { companyName: company.name },
+                          });
+                        }}
+                        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-[#f8f8ff]"
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span>View Assistant</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOpenDropdown(null);
+                          navigate(
+                            `/companies/${company.id}/create-assistant`,
+                            {
+                              state: { companyName: company.name },
+                            },
+                          );
+                        }}
+                        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-[#f8f8ff]"
+                      >
+                        <Bot className="h-4 w-4" />
+                        <span>Create Assistant</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOpenDropdown(null);
+                          openEditModal(company);
+                        }}
+                        className="flex w-full items-center gap-2 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-[#f8f8ff]"
+                      >
+                        <Edit className="h-4 w-4" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCompany(company.id)}
+                        className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-600 transition-colors hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Delete</span>
+                      </button>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Company Info */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Created</span>
-                  <span className="font-medium">{formatDate(company.created_at)}</span>
+              {/* Body */}
+              <div className="flex flex-1 flex-col gap-4 px-6 py-6">
+                {company.url && (
+                  <a
+                    href={company.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-fit items-center gap-2 text-sm font-medium text-indigo-600 transition hover:text-indigo-700"
+                  >
+                    <Globe className="h-4 w-4" />
+                    <span>Visit Website</span>
+                  </a>
+                )}
+
+                <p className="text-sm text-gray-600">
+                  {company.description || "No description provided yet."}
+                </p>
+
+                <div className="h-px w-full bg-[#edeefe]" />
+
+                <div>
+                  <p className="text-xs tracking-wide text-gray-400 uppercase">
+                    Last updated
+                  </p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {formatDate(company.updated_at)}
+                  </p>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Updated</span>
-                  <span className="font-medium">{formatDate(company.updated_at)}</span>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 pb-6">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    onClick={() =>
+                      navigate(`/companies/${company.id}/assistants`, {
+                        state: { companyName: company.name },
+                      })
+                    }
+                    className="flex w-full items-center justify-center rounded-2xl bg-[#E6E6FF] py-3 text-sm font-semibold text-indigo-700 transition hover:bg-[#d8d8ff]"
+                  >
+                    View Assistant
+                  </button>
+                  <button
+                    onClick={() =>
+                      navigate(`/companies/${company.id}/create-assistant`, {
+                        state: { companyName: company.name },
+                      })
+                    }
+                    className="flex w-full items-center justify-center rounded-2xl border border-[#E6E6FF] bg-white py-3 text-sm font-semibold text-indigo-700 transition hover:bg-[#E6E6FF]"
+                  >
+                    Create Assistant
+                  </button>
                 </div>
               </div>
             </div>
@@ -317,21 +399,22 @@ const CompaniesPage = () => {
 
         {/* Empty State */}
         {filteredCompanies.length === 0 && !loading && (
-          <div className="bg-white rounded-xl p-12 shadow-sm text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
               <Building2 className="h-8 w-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No companies found</h3>
-            <p className="text-gray-600 mb-6">
-              {searchTerm 
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">
+              No companies found
+            </h3>
+            <p className="mb-6 text-gray-600">
+              {searchTerm
                 ? "Try adjusting your search criteria"
-                : "Get started by creating your first company"
-              }
+                : "Get started by creating your first company"}
             </p>
             {!searchTerm && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center gap-2 rounded-xl border border-transparent bg-[#E6E6FF] px-4 py-2 font-semibold text-indigo-700 shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:border-[#C6C6FF] hover:bg-[#d9d9ff] hover:shadow-lg"
               >
                 <Plus className="h-5 w-5" />
                 <span>Create Your First Company</span>
@@ -342,17 +425,19 @@ const CompaniesPage = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="bg-white rounded-xl p-12 shadow-sm text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[#6366f1]"></div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading companies...</h3>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">
+              Loading companies...
+            </h3>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
             <p className="text-red-800">{error}</p>
           </div>
         )}
@@ -360,8 +445,8 @@ const CompaniesPage = () => {
 
       {/* Create Company Modal */}
       {showCreateModal && (
-        <div 
-          className="fixed inset-0 md:left-80 bg-black/20 flex items-center justify-center z-50"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 md:left-80"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               console.log("Modal backdrop clicked - closing modal");
@@ -369,51 +454,73 @@ const CompaniesPage = () => {
             }
           }}
         >
-          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Create New Company</h2>
-            <form onSubmit={(e) => {
-              console.log("Form submit event triggered");
-              handleCreateCompany(e);
-            }}>
+          <div className="mx-4 w-full max-w-md rounded-2xl border border-[#E0E0FF] bg-white/95 p-6 shadow-lg backdrop-blur-sm">
+            <h2 className="mb-4 text-xl font-semibold text-gray-900">
+              Create New Company
+            </h2>
+            <form
+              onSubmit={(e) => {
+                console.log("Form submit event triggered");
+                handleCreateCompany(e);
+              }}
+            >
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
                     Company Name
                   </label>
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-[#DADAFE] px-3 py-2 text-sm text-gray-700 shadow-sm transition focus:border-[#6366f1] focus:ring-2 focus:ring-[#E6E6FF]"
                     placeholder="Enter company name"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Company Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-[#DADAFE] px-3 py-2 text-sm text-gray-700 shadow-sm transition focus:border-[#6366f1] focus:ring-2 focus:ring-[#E6E6FF]"
+                    placeholder="Describe the company"
+                    rows={4}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
                     Website URL
                   </label>
                   <input
                     type="url"
                     value={formData.url}
-                    onChange={(e) => setFormData({...formData, url: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) =>
+                      setFormData({ ...formData, url: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-[#DADAFE] px-3 py-2 text-sm text-gray-700 shadow-sm transition focus:border-[#6366f1] focus:ring-2 focus:ring-[#E6E6FF]"
                     placeholder="https://example.com"
-                    required
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-3 mt-6">
+              <div className="mt-6 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="flex-1 rounded-xl border border-[#E0E0FF] bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-[#E6E6FF]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 rounded-xl border border-transparent bg-[#E6E6FF] px-4 py-2 text-sm font-semibold text-indigo-700 shadow-md transition-all hover:-translate-y-0.5 hover:border-[#C6C6FF] hover:bg-[#d9d9ff] hover:shadow-lg"
                 >
                   Create Company
                 </button>
@@ -425,49 +532,68 @@ const CompaniesPage = () => {
 
       {/* Edit Company Modal */}
       {showEditModal && editingCompany && (
-        <div className="fixed inset-0 md:left-80 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Edit Company</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 md:left-80">
+          <div className="mx-4 w-full max-w-md rounded-2xl border border-[#E0E0FF] bg-white/95 p-6 shadow-lg backdrop-blur-sm">
+            <h2 className="mb-4 text-xl font-semibold text-gray-900">
+              Edit Company
+            </h2>
             <form onSubmit={handleEditCompany}>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
                     Company Name
                   </label>
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-[#DADAFE] px-3 py-2 text-sm text-gray-700 shadow-sm transition focus:border-[#6366f1] focus:ring-2 focus:ring-[#E6E6FF]"
                     placeholder="Enter company name"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Company Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-[#DADAFE] px-3 py-2 text-sm text-gray-700 shadow-sm transition focus:border-[#6366f1] focus:ring-2 focus:ring-[#E6E6FF]"
+                    placeholder="Describe the company"
+                    rows={4}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
                     Website URL
                   </label>
                   <input
                     type="url"
                     value={formData.url}
-                    onChange={(e) => setFormData({...formData, url: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) =>
+                      setFormData({ ...formData, url: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-[#DADAFE] px-3 py-2 text-sm text-gray-700 shadow-sm transition focus:border-[#6366f1] focus:ring-2 focus:ring-[#E6E6FF]"
                     placeholder="https://example.com"
-                    required
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-3 mt-6">
+              <div className="mt-6 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="flex-1 rounded-xl border border-[#E0E0FF] bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-[#E6E6FF]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 rounded-xl border border-transparent bg-[#E6E6FF] px-4 py-2 text-sm font-semibold text-indigo-700 shadow-md transition-all hover:-translate-y-0.5 hover:border-[#C6C6FF] hover:bg-[#d9d9ff] hover:shadow-lg"
                 >
                   Update Company
                 </button>

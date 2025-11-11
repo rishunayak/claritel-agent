@@ -45,7 +45,7 @@ const AdminDashboard = () => {
           setHasFetched(true);
           const token = await getToken();
           if (token) {
-            dispatch(fetchAssistants(token));
+            dispatch(fetchAssistants({ token }));
           }
         } catch (err) {
           console.error("Error fetching assistants:", err);
@@ -157,7 +157,7 @@ const AdminDashboard = () => {
                       setHasFetched(false);
                       const token = await getToken();
                       if (token) {
-                        dispatch(fetchAssistants(token));
+                        dispatch(fetchAssistants({ token }));
                       }
                     }}
                   >

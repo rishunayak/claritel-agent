@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import assistantsReducer from './assistants/assistantsSlice';
 import companiesReducer from './companies/companiesSlice';
+import campaignsReducer from './campaigns/campaignsSlice';
 
 export const store = configureStore({
   reducer: {
     assistants: assistantsReducer,
     companies: companiesReducer,
+    campaigns: campaignsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -24,7 +24,7 @@ export const fetchCompanies = createAsyncThunk(
 
       const response = await axios.get(`${baseUrl}/api/companies`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer org_test_token`,
         },
       });
 
@@ -55,7 +55,7 @@ export const createCompany = createAsyncThunk(
         companyFields,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer org_test_token`,
             "Content-Type": "application/json",
           },
         }
@@ -86,7 +86,7 @@ export const updateCompany = createAsyncThunk(
         companyFields,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer org_test_token`,
             "Content-Type": "application/json",
           },
         }
@@ -112,7 +112,7 @@ export const deleteCompany = createAsyncThunk(
 
       await axios.delete(`${baseUrl}/api/companies/${id}`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer org_test_token`,
         },
       });
 
