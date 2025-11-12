@@ -90,8 +90,8 @@ const Sidebar = ({ isOpen, onToggle }) => {
         to={item.path}
         className={`group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
           active
-            ? "bg-gray-200 text-gray-900"
-            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            ? "bg-[#E6E6FE] text-gray-900"
+            : "text-gray-600 hover:bg-[#d9d9ff] hover:text-gray-900"
         } ${level > 0 ? "ml-4" : ""}`}
       >
         <item.icon
@@ -152,7 +152,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
               </div>
 
               {/* Assistants Section */}
-              <div>
+              {/* <div>
                 <h3 className="mb-3 text-xs font-semibold tracking-wider text-gray-900 uppercase">
                   ASSISTANTS
                 </h3>
@@ -163,10 +163,10 @@ const Sidebar = ({ isOpen, onToggle }) => {
                       <NavItem key={item.id} item={item} />
                     ))}
                 </div>
-              </div>
+              </div> */}
 
               {/* Pages Section */}
-              <div>
+              {/* <div>
                 <h3 className="mb-3 text-xs font-semibold tracking-wider text-gray-900 uppercase">
                   PAGES
                 </h3>
@@ -177,7 +177,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
                       <NavItem key={item.id} item={item} />
                     ))}
                 </div>
-              </div>
+              </div> */}
             </nav>
           </div>
 
